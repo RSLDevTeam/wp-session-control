@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Session Control
  * Description: Manage WordPress session lifetimes and concurrent login limits.
- * Version: 1.0.3
+ * Version: 1.0.4
  * Author: Matt Bates
  * Text Domain: wp-session-control
  */
