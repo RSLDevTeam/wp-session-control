@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Session Control
  * Description: Manage WordPress session lifetimes and concurrent login limits.
- * Version: 1.0.0
+ * Version: 1.0.2
  * Author: Matt Bates
  * Text Domain: wp-session-control
  */
@@ -15,7 +15,7 @@ define('WPSC_VERSION', '0.1.0');
 define('WPSC_PATH', plugin_dir_path(__FILE__));
 define('WPSC_URL', plugin_dir_url(__FILE__));
 define('WPSC_PLUGIN_BASENAME', plugin_basename(__FILE__));
-define('WPSC_DEBUG', true);
+define('WPSC_DEBUG', false);
 
 require_once WPSC_PATH . 'includes/class-wpsc-settings.php';
 require_once WPSC_PATH . 'includes/class-wpsc-admin.php';
