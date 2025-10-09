@@ -451,6 +451,17 @@ class WPSC_Session_Manager
         if ($user_id < 1) {
             return;
         }
+        // Suppress modal for explicit 'subscriber' role and clear any pending notice
+        $u = get_userdata($user_id);
+        if ($u instanceof WP_User && in_array('subscriber', (array) $u->roles, true)) {
+            delete_user_meta($user_id, 'wpsc_pending_termination_notice');
+            wp_cache_delete($user_id, 'user_meta');
+            if (function_exists('clean_user_cache')) {
+                clean_user_cache($user_id);
+            }
+            self::log_debug('Modal suppressed for subscriber; cleared any pending notice.', ['user_id' => $user_id]);
+            return;
+        }
 
         $notice = get_user_meta($user_id, 'wpsc_pending_termination_notice', true);
         self::log_debug('Termination notice lookup.', [
@@ -468,8 +479,8 @@ class WPSC_Session_Manager
         }
         self::$modal_rendered = true;
 
-        // Reverse so newest sessions appear first
-        $sessions = array_slice(array_reverse((array) $notice['sessions']), 0, 10);
+        // Reverse so newest sessions appear first (limit to 4)
+        $sessions = array_slice(array_reverse((array) $notice['sessions']), 0, 4);
         $content = (string) WPSC_Settings::get_option('termination_notice_content');
         if ($content === '') {
             $content = __('You have been signed out of your older session to keep your account secure.', 'wp-session-control');
