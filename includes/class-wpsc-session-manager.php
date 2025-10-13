@@ -9,6 +9,50 @@ if (!defined('ABSPATH')) {
 
 class WPSC_Session_Manager
 {
+
+    /**
+     * Detect whether the User Switching plugin is currently impersonating another user.
+     * We key off its cookies: wordpress_user_sw_* and wordpress_user_sw_olduser_*.
+     */
+    private static function is_user_switching_active(): bool
+    {
+        foreach (array_keys($_COOKIE ?? []) as $name) {
+            if (strpos($name, 'wordpress_user_sw_olduser_') === 0) {
+                return true;
+            }
+            if (strpos($name, 'wordpress_user_sw_secure_') === 0) {
+                return true;
+            }
+            if (strpos($name, 'wordpress_user_sw_') === 0) {
+                return true;
+            }
+        }
+        // The plugin also sometimes sets a query param on the first redirect.
+        if (isset($_GET['user_switched']) && $_GET['user_switched'] === '1') {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Global switch to enable/disable Session Control at runtime.
+     * Disabled whenever User Switching impersonation is active.
+     */
+    private static function is_enabled(): bool
+    {
+        $enabled = apply_filters('wpsc_enabled', true);
+        if (!$enabled) {
+            return false;
+        }
+        if (self::is_user_switching_active()) {
+            if (self::is_debug_enabled()) {
+                self::log_debug('WPSC disabled because User Switching is active.');
+            }
+            return false;
+        }
+        return true;
+    }
+
     /**
      * Aggregated debug messages for console output.
      */
@@ -47,6 +91,11 @@ class WPSC_Session_Manager
      */
     public static function ensure_device_cookie(): void
     {
+
+        if (!self::is_enabled()) { 
+            return; 
+        }
+
         if (!is_user_logged_in()) {
             return;
         }
@@ -92,6 +141,10 @@ class WPSC_Session_Manager
      */
     public static function map_device_on_login(string $user_login, WP_User $user): void
     {
+        if (!self::is_enabled()) { 
+            return; 
+        }
+
         unset($user_login);
 
         $device_id = self::get_or_set_device_id_cookie();
@@ -147,6 +200,10 @@ class WPSC_Session_Manager
      */
     public static function map_device_on_set_auth_cookie($auth_cookie, $expire, $expiration, $user_id, $scheme, $token): void
     {
+        if (!self::is_enabled()) { 
+            return; 
+        }
+
         unset($auth_cookie, $expire, $expiration, $scheme);
         $user_id = (int) $user_id;
         if ($user_id <= 0) {
@@ -189,6 +246,10 @@ class WPSC_Session_Manager
      */
     public static function enforce_concurrent_session_limit(string $user_login, WP_User $user): void
     {
+        if (!self::is_enabled()) { 
+            return; 
+        }
+
         unset($user_login); // Not needed beyond signature compliance.
 
         $limit = (int) WPSC_Settings::get_option('max_concurrent_sessions');
@@ -414,7 +475,8 @@ class WPSC_Session_Manager
      */
     public static function print_debug_messages(): void
     {
-        if (!self::is_debug_enabled()) {
+        if (!self::is_enabled()) {
+            echo '<script>console.info("WPSC is disabled (User Switching active)");</script>';
             return;
         }
 
@@ -443,6 +505,10 @@ class WPSC_Session_Manager
      */
     public static function render_termination_modal(): void
     {
+        if (!self::is_enabled()) { 
+            return; 
+        }
+
         if (self::$modal_rendered || !is_user_logged_in()) {
             return;
         }
@@ -679,6 +745,11 @@ class WPSC_Session_Manager
      */
     public static function intercept_blocked_device(): void
     {
+        if (!self::is_enabled()) {
+            self::log_debug('Bypassed interceptor: User Switching active.');
+            return;
+        }
+           
         /**
          * Log intercept check start.
          */
@@ -927,6 +998,10 @@ class WPSC_Session_Manager
      */
     public static function maybe_logout_orphan_session(): void
     {
+        if (!self::is_enabled()) { 
+            return; 
+        }
+
         if (!is_user_logged_in()) {
             return;
         }
@@ -1035,6 +1110,10 @@ class WPSC_Session_Manager
      */
     public static function maybe_logout_for_ajax(): void
     {
+        if (!self::is_enabled()) { 
+            return; 
+        }
+
         if (!wp_doing_ajax()) {
             return;
         }
@@ -1055,6 +1134,10 @@ class WPSC_Session_Manager
      */
     public static function rest_pre_dispatch_guard($result, $server, $request)
     {
+        if (!self::is_enabled()) { 
+            return $result; 
+        }
+
         self::maybe_logout_orphan_session();
 
         return $result;
