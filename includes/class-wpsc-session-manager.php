@@ -36,7 +36,7 @@ class WPSC_Session_Manager
 
     /**
      * Global switch to enable/disable Session Control at runtime.
-     * Disabled whenever User Switching impersonation is active.
+     * Disabled whenever User Switching impersonation is active, or per-user override is set.
      */
     private static function is_enabled(): bool
     {
@@ -44,11 +44,25 @@ class WPSC_Session_Manager
         if (!$enabled) {
             return false;
         }
+        // Completely disable during User Switching impersonation
         if (self::is_user_switching_active()) {
             if (self::is_debug_enabled()) {
                 self::log_debug('WPSC disabled because User Switching is active.');
             }
             return false;
+        }
+        // Per-user override: if current user has the meta flag, disable
+        if (is_user_logged_in()) {
+            $uid = get_current_user_id();
+            if ($uid > 0) {
+                $bypass = get_user_meta($uid, 'wpsc_disable_for_user', true);
+                if (!empty($bypass)) {
+                    if (self::is_debug_enabled()) {
+                        self::log_debug('WPSC disabled by per-user override.', ['user_id' => $uid]);
+                    }
+                    return false;
+                }
+            }
         }
         return true;
     }

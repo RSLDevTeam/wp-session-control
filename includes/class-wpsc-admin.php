@@ -24,6 +24,12 @@ class WPSC_Admin
         add_action('admin_menu', [__CLASS__, 'register_menu']);
         add_action('admin_init', [__CLASS__, 'register_settings']);
         add_filter('plugin_action_links_' . WPSC_PLUGIN_BASENAME, [__CLASS__, 'add_settings_link']);
+
+        // Per-user override field on user profile/edit screens
+        add_action('show_user_profile', [__CLASS__, 'render_user_override_field']);
+        add_action('edit_user_profile', [__CLASS__, 'render_user_override_field']);
+        add_action('personal_options_update', [__CLASS__, 'save_user_override_field']);
+        add_action('edit_user_profile_update', [__CLASS__, 'save_user_override_field']);
     }
 
     /**
@@ -179,5 +185,57 @@ class WPSC_Admin
             </form>
         </div>
         <?php
+    }
+    /**
+     * Render the per-user Session Control override on the user profile screen.
+     */
+    public static function render_user_override_field($user): void
+    {
+        if (!($user instanceof WP_User)) {
+            $user = get_userdata($user);
+            if (!($user instanceof WP_User)) {
+                return;
+            }
+        }
+        $checked = get_user_meta($user->ID, 'wpsc_disable_for_user', true) ? 'checked' : '';
+        ?>
+        <h2><?php echo esc_html__('Session Control', 'wp-session-control'); ?></h2>
+        <table class="form-table" role="presentation">
+            <tr>
+                <th scope="row">
+                    <label for="wpsc_disable_for_user"><?php echo esc_html__('Disable Session Control for this user', 'wp-session-control'); ?></label>
+                </th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="wpsc_disable_for_user" id="wpsc_disable_for_user" value="1" <?php echo $checked; ?> />
+                        <?php echo esc_html__('Skip session limits, device flags, and modals for this user.', 'wp-session-control'); ?>
+                    </label>
+                </td>
+            </tr>
+        </table>
+        <?php
+    }
+
+    /**
+     * Save the per-user override flag from the profile screen.
+     */
+    public static function save_user_override_field($user_id): void
+    {
+        // Capability check
+        if (!current_user_can('edit_user', $user_id)) {
+            return;
+        }
+        // Sanitize checkbox
+        $val = isset($_POST['wpsc_disable_for_user']) && $_POST['wpsc_disable_for_user'] ? '1' : '';
+        if ($val === '1') {
+            update_user_meta($user_id, 'wpsc_disable_for_user', '1');
+        } else {
+            delete_user_meta($user_id, 'wpsc_disable_for_user');
+        }
+        // Clear user meta cache to reflect immediately
+        wp_cache_delete($user_id, 'user_meta');
+        if (function_exists('clean_user_cache')) {
+            clean_user_cache($user_id);
+        }
     }
 }
