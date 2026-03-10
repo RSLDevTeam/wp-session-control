@@ -97,6 +97,14 @@ class WPSC_Admin
         );
 
         add_settings_field(
+            'disable_new_session_modal',
+            __('Disable new session modal', 'wp-session-control'),
+            [__CLASS__, 'render_disable_new_session_modal_field'],
+            self::PAGE_SLUG,
+            'wpsc_general'
+        );
+
+        add_settings_field(
             'termination_notice_content',
             __('Session limit notice content', 'wp-session-control'),
             [__CLASS__, 'render_termination_notice_field'],
@@ -131,6 +139,19 @@ class WPSC_Admin
         $value = (int) WPSC_Settings::get_option('max_concurrent_sessions');
         echo '<input type="number" min="0" class="small-text" id="max_concurrent_sessions" name="' . esc_attr(WPSC_Settings::OPTION_KEY) . '[max_concurrent_sessions]" value="' . esc_attr($value) . '" />';
         echo '<p class="description">' . esc_html__('How many devices/browsers a user may be logged into at once. Set to 0 for unlimited.', 'wp-session-control') . '</p>';
+    }
+
+    /**
+     * Render global modal disable checkbox.
+     */
+    public static function render_disable_new_session_modal_field(): void
+    {
+        $checked = !empty(WPSC_Settings::get_option('disable_new_session_modal'));
+        echo '<label for="disable_new_session_modal">';
+        echo '<input type="checkbox" id="disable_new_session_modal" name="' . esc_attr(WPSC_Settings::OPTION_KEY) . '[disable_new_session_modal]" value="1" ' . checked($checked, true, false) . ' />';
+        echo ' ' . esc_html__('Do not show the session update modal when older sessions are terminated.', 'wp-session-control');
+        echo '</label>';
+        echo '<p class="description">' . esc_html__('Session limits and forced logout behavior still run; this only suppresses the popup shown to the newly logged-in session.', 'wp-session-control') . '</p>';
     }
 
     /**

@@ -531,6 +531,17 @@ class WPSC_Session_Manager
         if ($user_id < 1) {
             return;
         }
+
+        if (!empty(WPSC_Settings::get_option('disable_new_session_modal'))) {
+            delete_user_meta($user_id, 'wpsc_pending_termination_notice');
+            wp_cache_delete($user_id, 'user_meta');
+            if (function_exists('clean_user_cache')) {
+                clean_user_cache($user_id);
+            }
+            self::log_debug('Modal suppressed by plugin setting; cleared any pending notice.', ['user_id' => $user_id]);
+            return;
+        }
+
         // Suppress modal for explicit 'subscriber' role and clear any pending notice
         $u = get_userdata($user_id);
         if ($u instanceof WP_User && in_array('subscriber', (array) $u->roles, true)) {

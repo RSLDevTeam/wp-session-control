@@ -67,6 +67,8 @@ class WPSC_Settings
     {
         $options = self::get_options();
 
+        $options['disable_new_session_modal'] = !empty($input['disable_new_session_modal']) ? 1 : 0;
+
         if (isset($input['session_lifetime_minutes'])) {
             $options['session_lifetime_minutes'] = max(1, absint($input['session_lifetime_minutes']));
         }
@@ -99,6 +101,7 @@ class WPSC_Settings
         return [
             'session_lifetime_minutes' => 30,
             'max_concurrent_sessions' => 2,
+            'disable_new_session_modal' => 0,
             'termination_notice_heading' => __('Session Update', 'wp-session-control'),
             'termination_notice_content' => '',
         ];
